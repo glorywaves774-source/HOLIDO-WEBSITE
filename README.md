@@ -81,3 +81,7 @@ Added the project **Ending Female Genital Mutilation in the Cross-Border Region 
 ## Version 1.5.0 debugging release
 
 Merges the v1.3.0 FGM project with the fixes and content from the v1.4 line: contact page, error pages and admin screens no longer crash on undefined template variables; runtime folders are created at startup; newsletter feedback is shown; dashboard counts include drafts; upload errors show a clear message; `multer` upgraded to 2.x; partners, the UNDP success story, programme offices and phone numbers added from HOLIDO's own website.
+
+## Version 1.6.0 homepage marquee
+
+Adds an "In the field" photo marquee to the homepage (below the thematic-area strip). Five HOLIDO field and office photographs are stored in `public/images/marquee/` (resized to 700px height). The strip scrolls continuously, pauses on hover or keyboard focus, and becomes a manually scrollable strip for visitors who prefer reduced motion. To change the photos or captions, edit the `fieldPhotos` list at the top of the marquee block in `views/page.ejs`. HOLIDO should confirm consent for publishing photographs of identifiable community members and children before launch.
