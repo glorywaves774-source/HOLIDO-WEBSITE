@@ -105,16 +105,4 @@ db.prepare(`INSERT OR IGNORE INTO content(type,title,slug,summary,body,image,cat
 const clearProgramImages = db.prepare("UPDATE content SET image='' WHERE type='program' AND slug IN ('agriculture-food-security','education','health')");
 clearProgramImages.run();
 
-const bcrypt = require('bcryptjs');
-if (process.env.ADMIN_EMAIL && process.env.ADMIN_PASSWORD) {
-  const adminEmail = process.env.ADMIN_EMAIL.trim().toLowerCase();
-  const hash = bcrypt.hashSync(process.env.ADMIN_PASSWORD, 12);
-  const existing = db.prepare('SELECT id FROM admins WHERE email = ?').get(adminEmail);
-  if (existing) {
-    db.prepare('UPDATE admins SET password_hash = ? WHERE id = ?').run(hash, existing.id);
-  } else {
-    db.prepare('INSERT INTO admins (email, password_hash) VALUES (?, ?)').run(adminEmail, hash);
-  }
-}
-
 module.exports = db;

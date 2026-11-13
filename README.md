@@ -85,3 +85,11 @@ Merges the v1.3.0 FGM project with the fixes and content from the v1.4 line: con
 ## Version 1.6.0 homepage marquee
 
 Adds an "In the field" photo marquee to the homepage (below the thematic-area strip). Five HOLIDO field and office photographs are stored in `public/images/marquee/` (resized to 700px height). The strip scrolls continuously, pauses on hover or keyboard focus, and becomes a manually scrollable strip for visitors who prefer reduced motion. To change the photos or captions, edit the `fieldPhotos` list at the top of the marquee block in `views/page.ejs`. HOLIDO should confirm consent for publishing photographs of identifiable community members and children before launch.
+
+## Version 1.7.0 — hero slider, marquee fix and smoother interface
+
+**Homepage hero slider** (`views/page.ejs`, top of the home block). Five slides driven by the `heroSlides` list: edit text, links, photos and focal points there. Autoplay (7 s) with story-style progress bars; previous/next buttons, clickable bars, swipe/drag, ← → keys, and a pause button. Pauses on hover, keyboard focus, when the tab is hidden or the hero is off-screen. Honours `prefers-reduced-motion` (no autoplay). Portrait photos are shown as a framed print over a blurred backdrop of the same photo so they stay sharp. Without JavaScript the first slide shows normally.
+
+**Marquee fix.** Root cause: photos were `loading="lazy"` with no width/height inside a scrolling track, so un-loaded images had zero width, the track length was wrong and the loop jumped or left gaps. Now images carry intrinsic dimensions and load normally; `site.js` clones the photo set as many times as the screen needs (so ultra-wide screens never show a gap), scrolls at a constant speed on every screen size, pauses on hover (desktop), off-screen, and via a visible Pause/Play button (WCAG 2.2.2). With reduced motion or no JS it is a swipeable strip.
+
+**Smoothness.** Removed the page-wide `perspective` on `<body>` (it forced extra compositing and caused jank); card tilt now uses a local `perspective()`. Added: animated dropdowns and mobile menu (closes on Escape / outside click / link tap), tactile button press state, soft cross-fade between pages (View Transitions, where supported), restrained reveal for cards below the fold, header shadow on scroll, skip-to-content link and visible keyboard focus rings.
