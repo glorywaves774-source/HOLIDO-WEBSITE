@@ -1,6 +1,6 @@
 {
   "name": "holido-website",
-  "version": "1.9.0",
+  "version": "1.9.1",
   "private": true,
   "description": "Full-stack, CMS-enabled website for Holistic Development Organisation (HOLIDO).",
   "main": "server.js",

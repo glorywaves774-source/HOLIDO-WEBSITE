@@ -114,3 +114,9 @@ New files: `public/css/motion.css` and `public/js/motion.js` (no new dependencie
 - **Field marquee**: scrolling the page briefly speeds the photo strip, which then eases back to its normal pace; it still pauses on hover and focus.
 - **Page changes**: a short cross-fade between pages in browsers that support cross-document view transitions (Chrome, Edge, Safari 18.2+); others navigate as before.
 - Reveal hand-back timing in `site.js` raised from 1.1 s to 1.5 s to suit the longer reveal.
+
+## Version 1.9.1 image fix
+
+- Removed the externally hosted holido.org photograph from the home page "Who we are" section; it now uses the local HOLIDO photo `/assets/images/hero/community-meeting-900.jpg` (with a 1280px `srcset`, intrinsic width/height and a descriptive alt).
+- Added image-containment rules (end of `public/css/spatial.css`) so images, figures and embedded media can never exceed their containers. The rules use zero-specificity bases, so the hero slideshow, marquee, cards and gallery keep their existing styling.
+- Hero slideshow, gallery, content, backend and design are unchanged.
