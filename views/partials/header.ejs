@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title><%= title ? title + ' | HOLIDO' : 'HOLIDO | Holistic Development Organisation' %></title>
+  <meta name="description" content="<%= ({home:'Holistic Development Organisation (HOLIDO) works with communities across Northern Ghana to empower women, children, youth and families.',about:'Learn about HOLIDO, its vision, mission, objectives and values.',programmes:'Explore HOLIDO thematic programmes in agriculture and food security, education and health.',projects:'Discover projects and community initiatives reported by HOLIDO.',impact:'Read community impact stories and development milestones reported by HOLIDO.',people:'Meet the Board and people supporting HOLIDO’s mission.',contact:'Contact HOLIDO in Tamale, Ghana, for programme, partnership and general enquiries.'}[pageKey] || (title+' | Holistic Development Organisation (HOLIDO)')) %>">
+  <link rel="canonical" href="<%= (process.env.SITE_URL || 'https://www.holido.org') + currentPath %>">
+  <meta property="og:site_name" content="HOLIDO"><meta property="og:title" content="<%= title %> | HOLIDO"><meta property="og:description" content="Holistic Development Organisation working with communities across Northern Ghana."><meta property="og:type" content="website"><meta property="og:url" content="<%= (process.env.SITE_URL || 'https://www.holido.org') + currentPath %>">
+  <meta name="theme-color" content="#c90000"><link rel="icon" href="/assets/images/holido-logo.png" type="image/png">
+  <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/assets/css/site.css">
+</head>
+<body>
+<div class="topbar"><div class="container topbar-inner"><span>⌖ &nbsp;NK143 C, Tamale, Ghana</span><a href="mailto:holidoghana@gmail.com">✉ &nbsp;holidoghana@gmail.com</a><a href="mailto:georgedam@holido.org">georgedam@holido.org</a><a class="top-site" href="https://www.holido.org">◎ &nbsp;www.holido.org</a></div></div>
+<header class="site-header"><div class="container nav-wrap"><a class="brand" href="/" aria-label="HOLIDO home"><img src="/assets/images/holido-logo.png" alt="HOLIDO – Holistic Development Organisation"></a><button class="menu-toggle" aria-label="Open navigation" aria-expanded="false">☰</button><nav class="main-nav">
+<a class="<%= currentPath==='/'?'active':'' %>" href="/">Home</a>
+<details class="nav-dropdown"><summary>About</summary><div class="nav-menu"><a href="/about">About HOLIDO</a><a href="/our-people">Our People</a><a href="/partners">Partners</a></div></details>
+<details class="nav-dropdown"><summary>Our Work</summary><div class="nav-menu"><a href="/programmes">Programmes</a><a href="/projects">Projects</a><a href="/gallery">Photo Gallery</a><a href="/resources">Resources</a></div></details>
+<details class="nav-dropdown"><summary>Impact</summary><div class="nav-menu"><a href="/impact">Our Impact</a><a href="/news">News & Updates</a></div></details>
+<a class="<%= currentPath==='/get-involved'?'active':'' %>" href="/get-involved">Get Involved</a>
+<a class="<%= currentPath==='/contact'?'active':'' %>" href="/contact">Contact</a>
+</nav><a class="nav-cta" href="/get-involved">Support our work <span>↗</span></a></div></header>
+<main>
