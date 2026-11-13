@@ -108,7 +108,7 @@ clearProgramImages.run();
 const bcrypt = require('bcryptjs');
 if (process.env.ADMIN_EMAIL && process.env.ADMIN_PASSWORD) {
  const adminEmail = process.env.ADMIN_EMAIL.trim().toLowerCase();
- const hash = bcrpt.hashSync(process.env.ADMIN_PASSWORD, 12);
+ const hash = bcrypt.hashSync(process.env.ADMIN_PASSWORD, 12);
  const existing = db.prepare('SELECT id FROM admins WHERE email = ?').get(adminEmail);
  if (existing) {
   db.prepare('UPDATE admins SET password_hash = ? WHERE id = ?').run(hash, existing.id);
