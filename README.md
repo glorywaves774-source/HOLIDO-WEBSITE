@@ -8,6 +8,7 @@ A responsive, server-rendered multipage website and SQLite-backed content manage
 - Responsive HOLIDO red-and-white brand system and supplied HOLIDO logo.
 - Homepage hero uses a brightened crop from the homepage graphic approved in this project.
 - Contact details: NK143 C, Tamale, Ghana; holidoghana@gmail.com; georgedam@holido.org; www.holido.org.
+- Footer Facebook and LinkedIn icons: set `FACEBOOK_URL` and `LINKEDIN_URL` (full https URLs) in `.env`; an icon is hidden if its URL is blank.
 - Newsletter subscription capture (CSV export available to administrators).
 - Contact enquiries stored for administrator review.
 - Partner, gallery and resource sections remain ready for HOLIDO to populate later.
@@ -86,10 +87,30 @@ Merges the v1.3.0 FGM project with the fixes and content from the v1.4 line: con
 
 Adds an "In the field" photo marquee to the homepage (below the thematic-area strip). Five HOLIDO field and office photographs are stored in `public/images/marquee/` (resized to 700px height). The strip scrolls continuously, pauses on hover or keyboard focus, and becomes a manually scrollable strip for visitors who prefer reduced motion. To change the photos or captions, edit the `fieldPhotos` list at the top of the marquee block in `views/page.ejs`. HOLIDO should confirm consent for publishing photographs of identifiable community members and children before launch.
 
-## Version 1.7.0 — hero slider, marquee fix and smoother interface
 
-**Homepage hero slider** (`views/page.ejs`, top of the home block). Five slides driven by the `heroSlides` list: edit text, links, photos and focal points there. Autoplay (7 s) with story-style progress bars; previous/next buttons, clickable bars, swipe/drag, ← → keys, and a pause button. Pauses on hover, keyboard focus, when the tab is hidden or the hero is off-screen. Honours `prefers-reduced-motion` (no autoplay). Portrait photos are shown as a framed print over a blurred backdrop of the same photo so they stay sharp. Without JavaScript the first slide shows normally.
+## Version 1.7.0 spatial UI, full CMS text and better pictures
 
-**Marquee fix.** Root cause: photos were `loading="lazy"` with no width/height inside a scrolling track, so un-loaded images had zero width, the track length was wrong and the loop jumped or left gaps. Now images carry intrinsic dimensions and load normally; `site.js` clones the photo set as many times as the screen needs (so ultra-wide screens never show a gap), scrolls at a constant speed on every screen size, pauses on hover (desktop), off-screen, and via a visible Pause/Play button (WCAG 2.2.2). With reduced motion or no JS it is a swipeable strip.
+- **Spatial interface** (`public/css/spatial.css`, loaded after `site.css`): frosted-glass header and cards, layered depth shadows, a floating thematic-area dock overlapping the hero, gradient depth bands, glass article sheets over page heroes, and gentle parallax, scroll reveal and pointer tilt. Motion is disabled for visitors who prefer reduced motion.
+- **Full CMS text**: summary limit raised to 2,000 characters and body to 100,000; nothing is truncated on the site. Body text supports blank-line paragraphs, `- ` bullets, `1. ` lists, `## ` sub-headings, `> ` quotations, `**bold**`, `*italic*` and `[text](https://...)` links (all HTML is escaped). Cards show the whole summary (or the first paragraph of the body if no summary exists); partners, gallery items, people and resources show their full body.
+- **Pictures**: click-to-set focal point with live Card/Wide/Round previews, optional alt text, a Remove picture option, uploads up to 12 MB automatically resized to 2200 px, EXIF-rotated and verified as real images (via the optional `sharp` package; without it, files are stored as supplied). The Programmes page now shows uploaded programme images, the gallery is a masonry that shows every photograph whole, and detail pages show the full picture.
+- **Fixes**: programme images are no longer erased at every restart; starter content is added once, so deleted items do not return; unused uploaded files are removed when a record is deleted or its picture replaced. Run `npm install` after upgrading. Image addresses from sites other than holido.org are blocked by the Content Security Policy, so upload files instead.
 
-**Smoothness.** Removed the page-wide `perspective` on `<body>` (it forced extra compositing and caused jank); card tilt now uses a local `perspective()`. Added: animated dropdowns and mobile menu (closes on Escape / outside click / link tap), tactile button press state, soft cross-fade between pages (View Transitions, where supported), restrained reveal for cards below the fold, header shadow on scroll, skip-to-content link and visible keyboard focus rings.
+
+## Version 1.8.0 hero slideshow and Board of Directors profiles
+
+**Home page hero slideshow.** The single hero photo is now a seven-photo slideshow (`public/images/hero/`, responsive sizes, metadata removed). It auto-advances every 6.5 s, pauses on hover, keyboard focus, when off-screen or when the visitor presses Pause, supports Previous/Next, dots, arrow keys and swipe, and does not autoplay for visitors who prefer reduced motion. Only the first photo loads with the page; the rest load shortly after. To change photos or captions edit the `heroSlides` list at the top of the home block in `views/page.ejs` (`framed:true` shows a tall or awkward photo whole, on a blurred backdrop). HOLIDO should confirm consent for publishing photographs of identifiable community members and children.
+
+**Our People.** `/our-people` now has a portrait roster that links to a full profile for each director: portrait, position, qualifications, "personality in a few words" tags, short introduction, personal quote, the full personality profile (up to 100,000 characters, nothing truncated, supports sub-headings, bullets, quotations, bold, italic and links) and areas of expertise. Everything is edited in Admin > People (new fields: qualifications, traits, expertise, quote; picture focal-point picker with a portrait preview). Directors without a portrait show their initials until one is uploaded. Existing databases are migrated once on start-up: starter qualifications move from the body field to the new Qualifications field; any text an administrator has already written is left untouched. No board-member photographs are included in this package; upload them in the admin area.
+
+
+## Version 1.9.0 motion layer
+
+New files: `public/css/motion.css` and `public/js/motion.js` (no new dependencies, no change to the Content Security Policy or the backend). Motion is switched off completely for visitors whose device asks for reduced motion, and the site is unchanged if either file fails to load.
+
+- **Hero arrival**: headline lines rise out of a mask, then the lead, buttons, slideshow controls and the glass focus dock follow in sequence. While scrolling, the hero words drift up and fade. Every inner page heading uses the same line reveal.
+- **Reading chrome**: a thin red scroll-progress bar; the header tucks away while scrolling down and returns on scroll up (it stays put while a menu is open or focused); dropdown menus ease open.
+- **Scroll reveals**: cards tip up out of the page in staggered order; photographs (intro, article, profile and gallery images) unveil top to bottom.
+- **Pointer touches** (mouse and pen only): buttons lean toward the pointer, and the light inside the red bands follows it.
+- **Field marquee**: scrolling the page briefly speeds the photo strip, which then eases back to its normal pace; it still pauses on hover and focus.
+- **Page changes**: a short cross-fade between pages in browsers that support cross-document view transitions (Chrome, Edge, Safari 18.2+); others navigate as before.
+- Reveal hand-back timing in `site.js` raised from 1.1 s to 1.5 s to suit the longer reveal.

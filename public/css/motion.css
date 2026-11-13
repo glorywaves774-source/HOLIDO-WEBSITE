@@ -1,0 +1,77 @@
+/* HOLIDO v1.9 — motion layer.
+   Loaded after spatial.css. Everything here sits inside prefers-reduced-motion:no-preference
+   and is keyed to the .mo class, which the page head only sets when motion is welcome.
+   Without it the site is exactly the v1.8 layout. */
+
+:root{--mo-ease:cubic-bezier(.16,1,.3,1)}
+
+@media (prefers-reduced-motion:no-preference){
+
+/* ---------- 1. page-to-page cross-fade (browsers that support it) ---------- */
+@view-transition{navigation:auto}
+::view-transition-old(root){animation:moFadeOut .22s ease both}
+::view-transition-new(root){animation:moFadeIn .38s ease .05s both}
+@keyframes moFadeOut{to{opacity:0}}
+@keyframes moFadeIn{from{opacity:0}}
+
+/* ---------- 2. scroll progress ---------- */
+.mo-progress{position:fixed;left:0;right:0;top:0;height:3px;z-index:60;pointer-events:none;transform-origin:0 50%;transform:scaleX(var(--p,0));background:linear-gradient(90deg,#c90000,#ff5a3c);box-shadow:0 0 10px rgba(201,0,0,.5)}
+
+/* ---------- 3. header: slides away on the way down, returns on the way up ---------- */
+.mo .site-header{transition:transform .5s var(--mo-ease),box-shadow .4s ease,background .3s}
+.mo .site-header.is-hidden{transform:translate3d(0,-110%,0)}
+.mo .site-header.is-stuck{box-shadow:0 1px 0 rgba(255,255,255,.8) inset,0 14px 34px -16px rgba(90,0,0,.45)}
+.mo .brand img{transition:transform .5s var(--mo-ease)}
+.mo .site-header.is-stuck .brand img{transform:scale(.92);transform-origin:0 50%}
+.mo .nav-dropdown[open] .nav-menu{transform-origin:50% 0;animation:moMenu .32s var(--mo-ease) backwards}
+@keyframes moMenu{from{opacity:0;transform:translate3d(0,-10px,0) scale(.97)}}
+
+/* ---------- 4. the one orchestrated moment: hero arrival ---------- */
+.mo .hero h1:not(.split),.mo .page-hero h1:not(.split){opacity:0;animation:moShow .01s linear 1.4s forwards}
+@keyframes moShow{to{opacity:1}}
+.ln{display:block;overflow:hidden;padding-bottom:.14em;margin-bottom:-.14em}
+.ln-i{display:block;transform-origin:0 100%;animation:moLine 1.05s var(--mo-ease) both;animation-delay:calc(.18s + var(--i,0) * .11s)}
+@keyframes moLine{from{transform:translate3d(0,112%,0) rotate(3deg)}to{transform:none}}
+
+.mo .hero-content .eyebrow,.mo .page-hero .container>.eyebrow{animation:moUp .8s var(--mo-ease) .04s both}
+.mo .hero-lead,.mo .page-hero .container>p:not(.eyebrow){animation:moUp .9s var(--mo-ease) .62s both}
+.mo .hero-actions{animation:moUp .9s var(--mo-ease) .78s both}
+.mo .hero-ui{animation:moUp .9s var(--mo-ease) 1s both}
+@keyframes moUp{from{opacity:0;transform:translate3d(0,24px,0)}to{opacity:1;transform:none}}
+
+/* the glass dock rises into place, then its four doors follow */
+.mo .focus-grid{animation:moDock 1s var(--mo-ease) .9s backwards}
+@keyframes moDock{from{opacity:0;transform:translate3d(0,46px,0) scale(.97)}}
+.mo .focus-grid a{animation:moUp .7s var(--mo-ease) backwards}
+.mo .focus-grid a:nth-child(1){animation-delay:1.1s}
+.mo .focus-grid a:nth-child(2){animation-delay:1.18s}
+.mo .focus-grid a:nth-child(3){animation-delay:1.26s}
+.mo .focus-grid a:nth-child(4){animation-delay:1.34s}
+.mo .focus-grid a:nth-child(5){animation-delay:1.42s}
+
+/* the photograph settles back as the page is scrolled; the words drift up and fade */
+.mo .hero-content{transform:translate3d(0,calc(var(--sy,0) * -.11px),0);opacity:calc(1 - var(--sy,0) / 620);will-change:transform,opacity}
+
+/* ---------- 5. scroll reveals: cards tip up out of the page (replaces the v1.7 fade-slide) ---------- */
+.js .reveal{opacity:0;transform:perspective(900px) translate3d(0,38px,0) rotateX(7deg);transform-origin:50% 100%;transition:opacity .8s ease,transform 1.05s var(--mo-ease);transition-delay:var(--d,0s)}
+.js .reveal.in{opacity:1;transform:none}
+
+/* photographs unveil from the top down. The clip box is wider than the picture so its shadow is never cut. */
+.mo .unveil{clip-path:inset(-70px -70px 100% -70px);transform:scale(1.07);transition:clip-path 1.2s var(--mo-ease),transform 1.6s var(--mo-ease)}
+.mo .unveil.in{clip-path:inset(-70px);transform:none}
+
+/* ---------- 6. magnetic buttons (pointer devices) ---------- */
+.mo .btn,.mo .nav-cta{translate:var(--tx,0) var(--ty,0);transition:translate .35s var(--mo-ease),transform .25s var(--ease),box-shadow .25s,background .2s}
+.mo .btn.is-magnet,.mo .nav-cta.is-magnet{transition:translate .08s linear,transform .25s var(--ease),box-shadow .25s,background .2s}
+
+/* ---------- 7. light follows the pointer across the red bands ---------- */
+.mo .impact-band-inner::before,.mo .join-cta .container::before,.mo .page-hero::before{translate:calc(var(--bx,0) * 34px) calc(var(--by,0) * 26px);transition:translate .9s var(--mo-ease)}
+.mo .impact-band-inner::after,.mo .join-cta .container::after,.mo .page-hero::after{translate:calc(var(--bx,0) * -22px) calc(var(--by,0) * -18px);transition:translate 1.1s var(--mo-ease)}
+
+/* ---------- 8. field marquee: the strip is gently nudged by scrolling (see motion.js) ---------- */
+.mo .marquee-set figure img{transition:transform 1.1s var(--mo-ease)}
+.mo .marquee-set figure:hover img{transform:scale(1.06)}
+
+/* ---------- 9. the tilt cards ease back instead of snapping ---------- */
+.program-card,.story-card,.project-row,.person-card,.involve-card,.vision-card{transition:transform .5s var(--mo-ease),box-shadow .35s var(--mo-ease),background .3s}
+}

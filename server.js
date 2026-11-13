@@ -13,6 +13,8 @@ const { execFile } = require('child_process');
 const { promisify } = require('util');
 const execFileAsync = promisify(execFile);
 const db = require('./src/db');
+const fmt = require('./src/format');
+let sharp = null; try { sharp = require('sharp'); } catch (e) { console.warn('sharp is not installed: uploaded images will be stored as supplied (no resizing or content check).'); }
 const app = express();
 const PORT = Number(process.env.PORT || 3000);
 const isProd = process.env.NODE_ENV === 'production';
@@ -24,10 +26,11 @@ if (isProd && (!process.env.SESSION_SECRET || process.env.SESSION_SECRET.length 
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 app.set('trust proxy', isProd ? 1 : false);
+Object.assign(app.locals, { rich: fmt.rich, cardText: fmt.cardText, fullText: fmt.fullText, imgAttrs: fmt.imgAttrs, imgPos: fmt.imgPos, fmtDate: fmt.fmtDate, excerpt: fmt.excerpt, para: fmt.para, tags: fmt.tags, initials: fmt.initials });
 app.use(helmet({
   contentSecurityPolicy: { directives: {
     defaultSrc: ["'self'"], styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'], fontSrc: ["'self'", 'https://fonts.gstatic.com'],
-    imgSrc: ["'self'", 'data:', 'https://www.holido.org', 'https://holido.org'], scriptSrc: ["'self'", "'unsafe-inline'"],
+    imgSrc: ["'self'", 'data:', 'blob:', 'https://www.holido.org', 'https://holido.org'], scriptSrc: ["'self'", "'unsafe-inline'"],
     connectSrc: ["'self'"], objectSrc: ["'none'"], upgradeInsecureRequests: isProd ? [] : null
   }}, referrerPolicy: { policy: 'strict-origin-when-cross-origin' }
 }));
@@ -49,6 +52,8 @@ app.use((req, res, next) => {
   // Defaults so shared templates never hit a ReferenceError (error pages, admin pages, contact page).
   res.locals.pageKey = ''; res.locals.title = ''; res.locals.error = null; res.locals.sent = false;
   res.locals.subscribe = ['success','invalid','error'].includes(req.query.subscribe) ? req.query.subscribe : '';
+  const socialUrl=(v,host)=>{try{const u=new URL(String(v||'').trim());return u.protocol==='https:'&&host.test(u.hostname)?u.href:''}catch(e){return ''}};
+  res.locals.social = { facebook: socialUrl(process.env.FACEBOOK_URL,/(^|\.)facebook\.com$|^fb\.com$/i), linkedin: socialUrl(process.env.LINKEDIN_URL,/(^|\.)linkedin\.com$/i) };
   res.locals.site = { name: 'Holistic Development Organisation', short: 'HOLIDO', address: 'NK143 C, Tamale, Ghana', emails: ['holidoghana@gmail.com', 'georgedam@holido.org'], website: 'www.holido.org' };
   next();
 });
@@ -120,23 +125,56 @@ const countType=t=>db.prepare('SELECT COUNT(*) n FROM content WHERE type=?').get
 app.get('/admin', requireAdmin, (req,res)=>res.render('admin/dashboard',{title:'Content dashboard',counts:{programs:countType('program'),projects:countType('project'),stories:countType('story'),people:countType('person'),partners:countType('partner'),gallery:countType('gallery'),resources:countType('resource'),documents:db.prepare('SELECT COUNT(*) n FROM documents').get().n,subscribers:db.prepare("SELECT COUNT(*) n FROM subscribers WHERE status='active'").get().n,messages:db.prepare("SELECT COUNT(*) n FROM messages WHERE status='new'").get().n},messages:db.prepare('SELECT * FROM messages ORDER BY created_at DESC LIMIT 8').all()}));
 const types=['program','project','story','person','news','partner','gallery','resource'];
 const typeLabels={program:'Programmes',project:'Projects',story:'Impact stories',person:'People',news:'News & updates',partner:'Partners',gallery:'Gallery',resource:'Resources'};
-const upload=multer({storage:multer.diskStorage({destination:(req,file,cb)=>cb(null,path.join(__dirname,'uploads')),filename:(req,file,cb)=>{const ext=path.extname(file.originalname).toLowerCase();cb(null,crypto.randomBytes(16).toString('hex')+ext);}}),limits:{fileSize:5*1024*1024,files:1},fileFilter:(req,file,cb)=>{const ext=path.extname(file.originalname).toLowerCase();const allowed={'.jpg':'image/jpeg','.jpeg':'image/jpeg','.png':'image/png','.webp':'image/webp','.gif':'image/gif'};const ok=!!allowed[ext]&&allowed[ext]===file.mimetype;cb(ok?null:new Error('Upload a valid JPG, PNG, WEBP or GIF image.'),ok);}});
+const upload=multer({storage:multer.diskStorage({destination:(req,file,cb)=>cb(null,path.join(__dirname,'uploads')),filename:(req,file,cb)=>{const ext=path.extname(file.originalname).toLowerCase();cb(null,crypto.randomBytes(16).toString('hex')+ext);}}),limits:{fileSize:12*1024*1024,files:1,fieldSize:2*1024*1024,fields:40},fileFilter:(req,file,cb)=>{const ext=path.extname(file.originalname).toLowerCase();const allowed={'.jpg':'image/jpeg','.jpeg':'image/jpeg','.png':'image/png','.webp':'image/webp','.gif':'image/gif'};const ok=!!allowed[ext]&&allowed[ext]===file.mimetype;cb(ok?null:new Error('Upload a valid JPG, PNG, WEBP or GIF image.'),ok);}});
 app.get('/admin/content/:type',requireAdmin,(req,res)=>{const type=req.params.type;if(!types.includes(type))return res.sendStatus(404);res.render('admin/list',{title:typeLabels[type],type,label:typeLabels[type],items:db.prepare('SELECT * FROM content WHERE type=? ORDER BY sort_order,created_at DESC').all(type)});});
 app.get('/admin/content/:type/new',requireAdmin,(req,res)=>{const type=req.params.type;if(!types.includes(type))return res.sendStatus(404);res.render('admin/edit',{title:'Add '+typeLabels[type],type,label:typeLabels[type],item:null});});
 app.get('/admin/content/:type/:id/edit',requireAdmin,(req,res)=>{const type=req.params.type;if(!types.includes(type))return res.sendStatus(404);const item=db.prepare('SELECT * FROM content WHERE type=? AND id=?').get(type,Number(req.params.id));if(!item)return res.sendStatus(404);res.render('admin/edit',{title:'Edit '+item.title,type,label:typeLabels[type],item});});
-app.post('/admin/content/:type',requireAdmin,upload.single('image_file'),csrfMultipart,(req,res)=>saveContent(req,res,null));
-app.post('/admin/content/:type/:id',requireAdmin,upload.single('image_file'),csrfMultipart,(req,res)=>saveContent(req,res,Number(req.params.id)));
-function saveContent(req,res,id){
- const type=req.params.type;if(!types.includes(type))return res.sendStatus(404);
- const v=k=>String(req.body[k]||'').trim();const title=v('title');if(!title)return res.status(400).send('Title is required.');
+app.post('/admin/content/:type',requireAdmin,upload.single('image_file'),csrfMultipart,(req,res,next)=>saveContent(req,res,null).catch(next));
+app.post('/admin/content/:type/:id',requireAdmin,upload.single('image_file'),csrfMultipart,(req,res,next)=>saveContent(req,res,Number(req.params.id)).catch(next));
+// Resize very large photos (phones often produce 5-12 MB files), apply EXIF rotation, and confirm the file really is an image.
+async function optimiseUpload(file){
+ if(!sharp||!file)return;
+ const ext=path.extname(file.filename).toLowerCase();
+ if(ext==='.gif')return;
+ try{
+  const meta=await sharp(file.path,{failOn:'none'}).metadata();
+  const big=(meta.width||0)>2200||(meta.height||0)>2200;
+  let pipe=sharp(file.path,{failOn:'none'}).rotate().resize({width:2200,height:2200,fit:'inside',withoutEnlargement:true});
+  pipe=ext==='.png'?pipe.png({compressionLevel:9}):ext==='.webp'?pipe.webp({quality:84}):pipe.jpeg({quality:84,mozjpeg:true});
+  const buf=await pipe.toBuffer();
+  if(big||(meta.orientation||1)>1||buf.length<file.size)fs.writeFileSync(file.path,buf);
+ }catch(e){ throw new Error('Upload a valid JPG, PNG, WEBP or GIF image.'); }
+}
+// Remove an uploaded file once no record uses it any more.
+function dropUploadIfUnused(url){
+ if(!url||!/^\/uploads\/[\w.-]+$/.test(url))return;
+ if(db.prepare('SELECT COUNT(*) n FROM content WHERE image=?').get(url).n)return;
+ fs.rm(path.join(__dirname,'uploads',path.basename(url)),{force:true},()=>{});
+}
+async function saveContent(req,res,id){
+ const discard=()=>{ if(req.file)fs.rm(req.file.path,{force:true},()=>{}); };
+ const type=req.params.type;if(!types.includes(type)){discard();return res.sendStatus(404);}
+ const v=k=>String(req.body[k]||'').trim();const title=v('title');
+ if(!title){discard();return res.status(400).render('error',{title:'Title required',message:'Please go back and enter a title.'});}
  let slug=(v('slug')||title).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,100);
  if(!slug)slug='item-'+Date.now().toString(36);
  const old=id?db.prepare('SELECT * FROM content WHERE id=? AND type=?').get(id,type):null;
- const image=req.file?'/uploads/'+req.file.filename:(v('image')|| (old?old.image:''));
- const data={type,title:title.slice(0,180),slug,summary:v('summary').slice(0,500),body:v('body').slice(0,12000),image,category:v('category').slice(0,100),author:v('author').slice(0,120),role:v('role').slice(0,120),location:v('location').slice(0,120),published:req.body.published==='1'?1:0,sort_order:Number(v('sort_order'))||0};
- try { if(id){db.prepare(`UPDATE content SET title=@title,slug=@slug,summary=@summary,body=@body,image=@image,category=@category,author=@author,role=@role,location=@location,published=@published,sort_order=@sort_order,updated_at=CURRENT_TIMESTAMP WHERE id=@id AND type=@type`).run({...data,id});}else{db.prepare(`INSERT INTO content(type,title,slug,summary,body,image,category,author,role,location,published,sort_order) VALUES(@type,@title,@slug,@summary,@body,@image,@category,@author,@role,@location,@published,@sort_order)`).run(data);}res.redirect('/admin/content/'+type);}catch(e){res.status(400).render('error',{title:'Could not save content',message:'This item may already use that URL slug. Please choose a different slug.'});}
+ if(id&&!old){discard();return res.sendStatus(404);}
+ try{ await optimiseUpload(req.file); }catch(e){ discard(); throw e; }
+ let image=old?old.image:'';
+ if(req.file)image='/uploads/'+req.file.filename;
+ else if(v('remove_image')==='1')image='';
+ else if(v('image'))image=v('image');
+ if(image&&!/^(\/uploads\/[\w.-]+|https?:\/\/\S+)$/.test(image))image=old?old.image:'';
+ const data={type,title:title.slice(0,180),slug,summary:v('summary').slice(0,2000),body:String(req.body.body||'').replace(/\r\n?/g,'\n').trim().slice(0,100000),image,image_pos:fmt.normPos(v('image_pos')),image_alt:v('image_alt').slice(0,300),category:v('category').slice(0,150),author:v('author').slice(0,200),role:v('role').slice(0,200),location:v('location').slice(0,200),qualifications:v('qualifications').slice(0,400),traits:v('traits').slice(0,600),expertise:v('expertise').slice(0,3000),quote:v('quote').slice(0,1500),published:req.body.published==='1'?1:0,sort_order:Number(v('sort_order'))||0};
+ try {
+  if(id){db.prepare(`UPDATE content SET title=@title,slug=@slug,summary=@summary,body=@body,image=@image,image_pos=@image_pos,image_alt=@image_alt,category=@category,author=@author,role=@role,location=@location,qualifications=@qualifications,traits=@traits,expertise=@expertise,quote=@quote,published=@published,sort_order=@sort_order,updated_at=CURRENT_TIMESTAMP WHERE id=@id AND type=@type`).run({...data,id});}
+  else{db.prepare(`INSERT INTO content(type,title,slug,summary,body,image,image_pos,image_alt,category,author,role,location,qualifications,traits,expertise,quote,published,sort_order) VALUES(@type,@title,@slug,@summary,@body,@image,@image_pos,@image_alt,@category,@author,@role,@location,@qualifications,@traits,@expertise,@quote,@published,@sort_order)`).run(data);}
+ }catch(e){ discard(); return res.status(400).render('error',{title:'Could not save content',message:'This item may already use that URL slug. Please choose a different slug.'}); }
+ if(old&&old.image!==image)dropUploadIfUnused(old.image);
+ res.redirect('/admin/content/'+type);
 }
-app.post('/admin/content/:type/:id/delete',requireAdmin,csrf,(req,res)=>{if(!types.includes(req.params.type))return res.sendStatus(404);db.prepare('DELETE FROM content WHERE type=? AND id=?').run(req.params.type,Number(req.params.id));res.redirect('/admin/content/'+req.params.type);});
+app.post('/admin/content/:type/:id/delete',requireAdmin,csrf,(req,res)=>{if(!types.includes(req.params.type))return res.sendStatus(404);const gone=db.prepare('SELECT image FROM content WHERE type=? AND id=?').get(req.params.type,Number(req.params.id));db.prepare('DELETE FROM content WHERE type=? AND id=?').run(req.params.type,Number(req.params.id));if(gone)dropUploadIfUnused(gone.image);res.redirect('/admin/content/'+req.params.type);});
 app.get('/admin/messages',requireAdmin,(req,res)=>res.render('admin/messages',{title:'Enquiries',items:db.prepare('SELECT * FROM messages ORDER BY created_at DESC').all()}));
 app.post('/admin/messages/:id/status',requireAdmin,csrf,(req,res)=>{db.prepare('UPDATE messages SET status=? WHERE id=?').run(req.body.status==='read'?'read':'new',Number(req.params.id));res.redirect('/admin/messages');});
 // Private document library: files are never exposed through the public uploads directory.
@@ -169,7 +207,7 @@ app.post('/admin/backups',requireAdmin,csrf,async(req,res)=>{try{await createBac
 app.get('/admin/backups/:name',requireAdmin,(req,res)=>{const name=path.basename(req.params.name);if(!/^holido-[\w-]+\.tar\.gz$/.test(name))return res.sendStatus(400);const file=path.join(backupRoot,name);if(!fs.existsSync(file))return res.sendStatus(404);res.download(file);});
 app.get('/robots.txt',(req,res)=>res.type('text').send('User-agent: *\nAllow: /\nDisallow: /admin\nSitemap: '+(process.env.SITE_URL||'https://www.holido.org')+'/sitemap.xml\n'));
 app.get('/sitemap.xml',(req,res)=>{const base=process.env.SITE_URL||'https://www.holido.org';const urls=['/','/about','/programmes','/projects','/news','/impact','/our-people','/get-involved','/partners','/gallery','/resources','/donate','/contact','/privacy'];for(const [type,prefix] of [['program','/programmes/'],['project','/projects/'],['news','/news/'],['story','/impact/']]) rows(type,500).forEach(x=>urls.push(prefix+x.slug));res.type('application/xml').send('<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'+urls.map(u=>`<url><loc>${base}${u}</loc></url>`).join('')+'</urlset>');});
-app.use((err,req,res,next)=>{console.error(err.message);if(/^Upload a (valid|supported)/.test(err.message))return res.status(400).render('error',{title:'Upload not accepted',message:err.message});if(err instanceof multer.MulterError)return res.status(400).render('error',{title:'Image upload error',message:err.code==='LIMIT_FILE_SIZE'?'Image must be 5 MB or smaller.':'Please upload one image at a time.'});res.status(500).render('error',{title:'Something went wrong',message:isProd?'Please try again shortly.':'The request could not be completed.'});});
+app.use((err,req,res,next)=>{console.error(err.message);if(/^Upload a (valid|supported)/.test(err.message))return res.status(400).render('error',{title:'Upload not accepted',message:err.message});if(err instanceof multer.MulterError)return res.status(400).render('error',{title:'Image upload error',message:err.code==='LIMIT_FILE_SIZE'?'Image must be 12 MB or smaller.':'Please upload one image at a time.'});res.status(500).render('error',{title:'Something went wrong',message:isProd?'Please try again shortly.':'The request could not be completed.'});});
 app.use((req,res)=>res.status(404).render('error',{title:'Page not found',message:'The page you are looking for may have moved or no longer exists.'}));
 app.listen(PORT,()=>console.log(`HOLIDO website running on http://localhost:${PORT}`));
 if (process.env.BACKUP_DISABLE !== '1') {

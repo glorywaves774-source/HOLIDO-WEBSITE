@@ -27,9 +27,17 @@ CREATE TABLE IF NOT EXISTS documents (id INTEGER PRIMARY KEY AUTOINCREMENT, titl
 CREATE INDEX IF NOT EXISTS idx_content_type_published ON content(type,published,sort_order);
 CREATE INDEX IF NOT EXISTS idx_messages_status ON messages(status,created_at);
 `);
+// v1.7: picture placement (focal point) and alt text, added to existing databases without data loss.
+const contentCols = db.prepare("PRAGMA table_info(content)").all().map(c => c.name);
+if (!contentCols.includes('image_pos')) db.exec("ALTER TABLE content ADD COLUMN image_pos TEXT DEFAULT ''");
+if (!contentCols.includes('image_alt')) db.exec("ALTER TABLE content ADD COLUMN image_alt TEXT DEFAULT ''");
+// v1.8: Board of Directors profiles (qualifications, personality traits, areas of expertise, personal quote).
+for (const col of ['qualifications', 'traits', 'expertise', 'quote']) {
+ if (!contentCols.includes(col)) db.exec(`ALTER TABLE content ADD COLUMN ${col} TEXT DEFAULT ''`);
+}
 const count = db.prepare('SELECT COUNT(*) AS n FROM content').get().n;
 if (!count) {
- const insert = db.prepare(`INSERT INTO content(type,title,slug,summary,body,image,category,author,role,location,sort_order) VALUES(@type,@title,@slug,@summary,@body,@image,@category,@author,@role,@location,@sort_order)`);
+ const insert = db.prepare(`INSERT INTO content(type,title,slug,summary,body,image,category,author,role,location,qualifications,sort_order) VALUES(@type,@title,@slug,@summary,@body,@image,@category,@author,@role,@location,@qualifications,@sort_order)`);
  const seeds = [
   {type:'program',title:'Agriculture & Food Security',slug:'agriculture-food-security',summary:'Strengthening sustainable food security, livelihoods and climate resilience.',body:'HOLIDO supports farmer group mobilisation, cooperative farming, climate-resilient farming practices and disaster risk reduction. Programmes are designed with communities to strengthen local ownership and sustainable livelihoods.',image:'',category:'Thematic area',sort_order:1},
   {type:'program',title:'Education',slug:'education',summary:'Promoting access to quality education in rural communities.',body:'HOLIDO promotes adult literacy, early childhood development and teacher capacity building using learner-centred and gender-sensitive methodologies.',image:'',category:'Thematic area',sort_order:2},
@@ -43,18 +51,22 @@ if (!count) {
   {type:'story',title:'Value Addition in Nakpanduri',slug:'value-addition-nakpanduri',summary:'Groundnut processing has helped a local entrepreneur grow her business.',body:'“I now process at least 10 bowls of groundnut a week and sell as far as Kumasi. I have branded my products and opened a savings account.”',image:'https://www.holido.org/images/WhatsApp%20Image%202026-06-15%20at%2010.01.09%20AM.jpeg',author:'Kombat Clementina',location:'Nakpanduri',category:'Livelihoods',sort_order:2},
   {type:'story',title:'Disability is not Inability',slug:'disability-is-not-inability',summary:'A shoemaker expanded production and now trains apprentices.',body:'“I expanded production from 3 to 10 pairs of sandals a week and now train two apprentices who are also physically challenged.”',image:'https://www.holido.org/images/WhatsApp%20Image%202026-06-15%20at%2010.01.10%20AM.jpeg',author:'Monika John Kofi',location:'Bunkpurugu',category:'Inclusive livelihoods',sort_order:3},
   {type:'story',title:'New Equipment, New Skills',slug:'new-equipment-new-skills',summary:'New equipment and training strengthened a tailoring business.',body:'“With a modern knitting machine and training, my product quality improved, I won a school uniform contract and cleared my outstanding bills.”',image:'https://www.holido.org/images/WhatsApp%20Image%202026-06-15%20at%2010.00.44%20AM.jpeg',author:'Seidu Nyanda',location:'Jimbale',category:'Skills & livelihoods',sort_order:4},
-  {type:'person',title:'Mr. George Dam Laar',slug:'george-dam-laar',summary:'Chairman & Founder',body:'Masters in Leadership & Development',role:'Chairman & Founder',sort_order:1},
-  {type:'person',title:'Mr. Peter Chamik Jayom',slug:'peter-chamik-jayom',summary:'Member',body:'MSc, Development Management',role:'Member',sort_order:2},
-  {type:'person',title:'Mr. Nunifu Buutmang',slug:'nunifu-buutmang',summary:'Secretary',body:'MSc, Agricultural Economics',role:'Secretary',sort_order:3},
-  {type:'person',title:'Mr. Joila Simon Kojo',slug:'joila-simon-kojo',summary:'Treasurer',body:'Certificate in Engineering & Solar',role:'Treasurer',sort_order:4},
-  {type:'person',title:'Mrs. Balonin Vida',slug:'balonin-vida',summary:'Financial Secretary',body:'Certificate in Midwifery',role:'Financial Secretary',sort_order:5},
-  {type:'person',title:'Mrs. Wallai Dorcas',slug:'wallai-dorcas',summary:'Member',body:'Middle School Leaving Certificate',role:'Member',sort_order:6},
-  {type:'person',title:'Mr. Isaac Suuk Laar',slug:'isaac-suuk-laar',summary:'Member',body:'BA, Integrated Development',role:'Member',sort_order:7}
+  {type:'person',title:'Mr. George Dam Laar',slug:'george-dam-laar',role:'Chairman & Founder',qualifications:'Masters in Leadership & Development',sort_order:1},
+  {type:'person',title:'Mr. Peter Chamik Jayom',slug:'peter-chamik-jayom',role:'Member',qualifications:'MSc, Development Management',sort_order:2},
+  {type:'person',title:'Mr. Nunifu Buutmang',slug:'nunifu-buutmang',role:'Secretary',qualifications:'MSc, Agricultural Economics',sort_order:3},
+  {type:'person',title:'Mr. Joila Simon Kojo',slug:'joila-simon-kojo',role:'Treasurer',qualifications:'Certificate in Engineering & Solar',sort_order:4},
+  {type:'person',title:'Mrs. Balonin Vida',slug:'balonin-vida',role:'Financial Secretary',qualifications:'Certificate in Midwifery',sort_order:5},
+  {type:'person',title:'Mrs. Wallai Dorcas',slug:'wallai-dorcas',role:'Member',qualifications:'Middle School Leaving Certificate',sort_order:6},
+  {type:'person',title:'Mr. Isaac Suuk Laar',slug:'isaac-suuk-laar',role:'Member',qualifications:'BA, Integrated Development',sort_order:7}
  ];
- const tx = db.transaction(rows => rows.forEach(row => insert.run({...row, summary:row.summary||'', body:row.body||'', image:row.image||'', category:row.category||'', author:row.author||'', role:row.role||'', location:row.location||'', sort_order:row.sort_order||0})));
+ const tx = db.transaction(rows => rows.forEach(row => insert.run({...row, summary:row.summary||'', body:row.body||'', image:row.image||'', category:row.category||'', author:row.author||'', role:row.role||'', location:row.location||'', qualifications:row.qualifications||'', sort_order:row.sort_order||0})));
  tx(seeds);
 }
 
+// Starter content is added once (fresh install, or first start after upgrading). Running it on every restart would
+// bring back anything an administrator deleted. It also no longer clears programme images set in the CMS.
+const starterDone = db.prepare("SELECT 1 FROM settings WHERE key='starter_content_v1_7'").get();
+if (!starterDone) {
 // Ensure the documented UNDP / UN Peacebuilding Fund artisan-livelihoods project is present even when upgrading an existing database.
 const artisanProject = db.prepare(`INSERT OR IGNORE INTO content(type,title,slug,summary,body,image,category,published,sort_order) VALUES('project',?,?,?,?,?,?,1,5)`);
 artisanProject.run('Women & Youth Artisan Livelihoods','women-youth-artisan-livelihoods','Livelihood restoration and skills support for women and youth artisans in North-East Ghana.','HOLIDO reports that, in partnership with UNDP under the UN Peacebuilding Fund, it supported 15 women and youth artisans in 9 rural communities across 3 districts of the North-East Region with equipment, refresher training and mentorship. The work included business and financial management skills and support for livelihoods and participation in conflict prevention.','https://holido.org/images/WhatsApp%20Image%202026-06-15%20at%2010.01.07%20AM.jpeg','Livelihoods · UNDP / UN Peacebuilding Fund');
@@ -101,20 +113,28 @@ db.prepare(`INSERT OR IGNORE INTO content(type,title,slug,summary,body,image,cat
  sort_order: 6
 });
 
-// Keep programme cards focused on the three verified thematic areas; source photos are shown in the activity gallery with accurate captions.
-const clearProgramImages = db.prepare("UPDATE content SET image='' WHERE type='program' AND slug IN ('agriculture-food-security','education','health')");
-clearProgramImages.run();
 
-const bcrypt = require('bcryptjs');
-if (process.env.ADMIN_EMAIL && process.env.ADMIN_PASSWORD) {
-  const adminEmail = process.env.ADMIN_EMAIL.trim().toLowerCase();
-  const hash = bcrypt.hashSync(process.env.ADMIN_PASSWORD, 12);
-  const existing = db.prepare('SELECT id FROM admins WHERE email = ?').get(adminEmail);
-  if (existing) {
-    db.prepare('UPDATE admins SET password_hash = ? WHERE id = ?').run(hash, existing.id);
-  } else {
-    db.prepare('INSERT INTO admins (email, password_hash) VALUES (?, ?)').run(adminEmail, hash);
+ db.prepare("INSERT OR REPLACE INTO settings(key,value) VALUES('starter_content_v1_7','1')").run();
+}
+
+// v1.8: older databases stored each director's qualification in the "body" field and repeated the role in "summary".
+// Move those starter values into their own fields so the body is free for the written personality profile.
+// Only values that still exactly match the original starter text are touched; anything an administrator has written is left alone.
+if (!db.prepare("SELECT 1 FROM settings WHERE key='people_profiles_v1_8'").get()) {
+ const oldQuals = {
+  'george-dam-laar':'Masters in Leadership & Development','peter-chamik-jayom':'MSc, Development Management','nunifu-buutmang':'MSc, Agricultural Economics',
+  'joila-simon-kojo':'Certificate in Engineering & Solar','balonin-vida':'Certificate in Midwifery','wallai-dorcas':'Middle School Leaving Certificate','isaac-suuk-laar':'BA, Integrated Development'
+ };
+ const getP = db.prepare("SELECT id,body,summary,role,qualifications FROM content WHERE type='person' AND slug=?");
+ const setP = db.prepare("UPDATE content SET qualifications=?, body=?, summary=? WHERE id=?");
+ db.transaction(() => {
+  for (const [slug, q] of Object.entries(oldQuals)) {
+   const r = getP.get(slug); if (!r || (r.qualifications || '').trim()) continue;
+   const isStarterBody = (r.body || '').trim() === q;
+   setP.run(isStarterBody ? q : r.qualifications || '', isStarterBody ? '' : r.body, (r.summary || '').trim() === (r.role || '').trim() ? '' : r.summary, r.id);
   }
+ })();
+ db.prepare("INSERT OR REPLACE INTO settings(key,value) VALUES('people_profiles_v1_8','1')").run();
 }
 
 module.exports = db;
